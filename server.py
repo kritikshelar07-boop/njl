@@ -349,13 +349,13 @@ def get_js():
         return HTMLResponse("// script.js not found", status_code=404)
     return FileResponse(p, media_type="application/javascript")
 
-@app.get("/logo.jpg")
+@app.get("/logo.png")
 def get_logo():
-    p = os.path.join(BASE_DIR, "logo.jpg")
+    p = os.path.join(BASE_DIR, "logo.png")
     if not os.path.exists(p):
         from fastapi.responses import Response as _R
         return _R(status_code=204)
-    return FileResponse(p, media_type="image/jpeg")
+    return FileResponse(p, media_type="image/png")
 
 @app.get("/favicon.ico")
 def get_favicon():
