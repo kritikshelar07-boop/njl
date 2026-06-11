@@ -349,6 +349,7 @@ def get_js():
         return HTMLResponse("// script.js not found", status_code=404)
     return FileResponse(p, media_type="application/javascript")
 
+# ── FIX: was /logo.jpg with image/jpeg — now correctly serves logo.png ──
 @app.get("/logo.png")
 def get_logo():
     p = os.path.join(BASE_DIR, "logo.png")
@@ -446,13 +447,9 @@ def api_inventory(
     if df is None:
         return {"error": "Data not yet loaded — please retry in a moment."}, 503
 
-    # ── Filters ──
     import re as _re2
-    # Helper: split a paste-filter param on every human separator variation,
-    # normalise to uppercase for case-insensitive matching.
+
     def _split_paste(param: str) -> set:
-        # Primary split on explicit separators, then secondary split on whitespace.
-        # ERP codes are never multi-word, so spaces always delimit separate codes.
         primary = _re2.split(r"[,;|\t\n\r]+", param)
         tokens = []
         for tok in primary:
@@ -465,7 +462,6 @@ def api_inventory(
                 tokens.append(tok)
         return {t.upper() for t in tokens if t}
 
-    # All paste-input filters are case-insensitive (frontend also uppercases)
     if serials.strip():
         s_set = _split_paste(serials)
         df    = df[df["SERIALNUMBER"].str.upper().isin(s_set)]
@@ -496,7 +492,7 @@ def api_inventory(
     df = apply_exact(df, "Product_Group",     product_groups)
     df = apply_exact(df, "Sub_Product_Group", sub_prod_grps)
     df = apply_exact(df, "PWC_SKUSTATUS",     sku_statuses)
-    # Vendor is a paste-input filter — case-insensitive, comma/space separated
+
     if vendors.strip():
         v_set = _split_paste(vendors)
         df    = df[df["VENDACCOUNT"].str.upper().isin(v_set)]
@@ -557,10 +553,6 @@ def api_duplicate_huids(
 # ─── API: Full Catalogue Download ─────────────────────────────────────────────
 @app.get("/api/download-catalogue")
 def api_download_catalogue():
-    """
-    Streams the entire dataset as a CSV file.
-    CSV skips all Excel formatting overhead — ~10x faster than xlsx for large frames.
-    """
     with _data_lock:
         df = df_global
 
@@ -600,10 +592,6 @@ def api_download_selective(
     sku_statuses:   str = Query(""),
     vendors:        str = Query(""),
 ):
-    """
-    Streams the currently-filtered subset of the dataset as a CSV file.
-    Accepts the exact same filter/sort params as /api/inventory (minus pagination).
-    """
     with _data_lock:
         df       = df_global
         row_text = ROW_TEXT_CACHE
@@ -612,7 +600,6 @@ def api_download_selective(
         from fastapi import HTTPException
         raise HTTPException(status_code=503, detail="Data not yet loaded.")
 
-    # ── Apply the same filter logic as /api/inventory ──
     import re as _re2
 
     def _split_paste(param: str) -> set:
@@ -692,7 +679,7 @@ def api_download_selective(
     )
 
 
-# ─── API: Manual Refresh Trigger (optional, can be secured) ──────────────────
+# ─── API: Manual Refresh Trigger ─────────────────────────────────────────────
 @app.post("/api/refresh")
 def api_refresh(secret: str = Query("")):
     """
