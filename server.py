@@ -48,7 +48,7 @@ LOCAL_CACHE_PATH = "/tmp/master_serial_enriched.parquet"
 ETAG_CACHE_PATH  = "/tmp/master_serial_enriched.etag"   # stores last ETag/Last-Modified
 
 # How often (minutes) the background thread checks for a new blob version
-REFRESH_INTERVAL_MINUTES = int(os.environ.get("REFRESH_INTERVAL_MINUTES", "30"))
+REFRESH_INTERVAL_MINUTES = int(os.environ.get("REFRESH_INTERVAL_MINUTES", "5"))
 
 PORT = int(os.environ.get("PORT", 8000))
 HOST = "0.0.0.0"
@@ -77,7 +77,7 @@ VENDOR_CACHE:          list = []
 
 SEARCH_COLS = [
     "SERIALNUMBER", "ITEMID", "VENDACCOUNT", "HUID", "WAREHOUSE", "WAREHOUSE_NAME",
-    "Category", "Subcategory", "Product_Group", "Sub_Product_Group", "PWC_SKUSTATUS",
+    "Category", "Subcategory", "Product_Group", "Sub_Product_Group", "Activity_Status",
     "LOCATION",
 ]
 
@@ -243,7 +243,7 @@ def _build_caches(df: pd.DataFrame):
         SUBCATEGORY_CACHE[:] = build("Subcategory")
         PRODUCT_GROUP_CACHE[:] = build("Product_Group")
         SUB_PROD_GRP_CACHE[:] = build("Sub_Product_Group")
-        SKU_STATUS_CACHE[:]  = build("PWC_SKUSTATUS")
+        SKU_STATUS_CACHE[:]  = build("Activity_Status")
         VENDOR_CACHE[:]      = build("VENDACCOUNT")
 
     log.info(f"[cache] Done — {total:,} rows, {len(dup)} dup-HUID groups.")
@@ -270,6 +270,11 @@ def load_data(force_download: bool = False):
 
     log.info(f"[data] Reading {LOCAL_CACHE_PATH} …")
     df = pd.read_parquet(LOCAL_CACHE_PATH)
+
+    # Backwards-compat: old parquet uses PWC_SKUSTATUS; new uses Activity_Status
+    if "Activity_Status" not in df.columns and "PWC_SKUSTATUS" in df.columns:
+        df.rename(columns={"PWC_SKUSTATUS": "Activity_Status"}, inplace=True)
+        log.info("[data] Renamed PWC_SKUSTATUS → Activity_Status (legacy parquet).")
 
     for col in ("GROSSQTY", "NETWEIGHT"):
         if col in df.columns:
@@ -491,7 +496,7 @@ def api_inventory(
     df = apply_exact(df, "Subcategory",       subcategories)
     df = apply_exact(df, "Product_Group",     product_groups)
     df = apply_exact(df, "Sub_Product_Group", sub_prod_grps)
-    df = apply_exact(df, "PWC_SKUSTATUS",     sku_statuses)
+    df = apply_exact(df, "Activity_Status",     sku_statuses)
 
     if vendors.strip():
         v_set = _split_paste(vendors)
@@ -644,7 +649,7 @@ def api_download_selective(
     df = apply_exact(df, "Subcategory",       subcategories)
     df = apply_exact(df, "Product_Group",     product_groups)
     df = apply_exact(df, "Sub_Product_Group", sub_prod_grps)
-    df = apply_exact(df, "PWC_SKUSTATUS",     sku_statuses)
+    df = apply_exact(df, "Activity_Status",     sku_statuses)
 
     if vendors.strip():
         v_set = _split_paste(vendors)
