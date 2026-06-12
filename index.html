@@ -131,17 +131,21 @@
 
     <div class="sidebar-divider"></div>
 
-    <!-- ── SKU STATUS ── -->
+    <!-- ── ACTIVITY STATUS ── -->
     <div class="filter-block">
-      <div class="filter-label">SKU Status
-        <button class="filter-clear-btn" onclick="clearDropdown('sku_status')">Clear</button>
+      <div class="filter-label">Activity Status
+        <button class="filter-clear-btn" onclick="clearActivityStatus()">Clear</button>
       </div>
-      <div id="sku_status-chips" class="active-chips"></div>
-      <div class="filter-search">
-        <svg class="fs-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-        <input type="text" id="sku_statusSearch" placeholder="Search or paste multiple…" oninput="filterDropdownList('sku_status')" onpaste="handleDropdownPaste(event,'sku_status')"/>
+      <div class="activity-status-toggles" style="flex-direction:column; gap:8px;">
+        <label class="status-toggle-label" id="toggle-active">
+          <input type="radio" name="activityStatus" id="statusActive" value="Active" onchange="onActivityStatusChange()">
+          <span class="status-toggle-pill active-pill">Active</span>
+        </label>
+        <label class="status-toggle-label" id="toggle-inactive">
+          <input type="radio" name="activityStatus" id="statusInactive" value="Inactive" onchange="onActivityStatusChange()">
+          <span class="status-toggle-pill inactive-pill">Inactive</span>
+        </label>
       </div>
-      <div class="filter-list dropdown-list" id="sku_statusList"></div>
     </div>
 
     <div class="sidebar-divider"></div>
