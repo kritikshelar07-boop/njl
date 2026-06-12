@@ -10,7 +10,6 @@ const dropdownSelections = {
   subcategory:       new Set(),
   product_group:     new Set(),
   sub_product_group: new Set(),
-  sku_status:        new Set(),
 };
 
 // Paste-input filter selections (Vendor, Warehouse, Serial, HUID, Location)
@@ -48,7 +47,6 @@ document.addEventListener('DOMContentLoaded', async function init() {
       populateDropdown('subcategory'),
       populateDropdown('product_group'),
       populateDropdown('sub_product_group'),
-      populateDropdown('sku_status'),
     ]);
     await render();
     // Pre-load dup-HUID data so badge shows count immediately
@@ -158,7 +156,6 @@ const DROPDOWN_LABEL = {
   subcategory:       'Subcategory',
   product_group:     'Product Group',
   sub_product_group: 'Sub-Product Group',
-  sku_status:        'SKU Status',
 };
 
 // Full cached list per type (for client-side search filtering)
@@ -238,6 +235,31 @@ window.clearDropdown = function(type) {
   dropdownSelections[type].clear();
   updateDropdownChips(type);
   populateDropdown(type);
+  currentPage = 1;
+  render();
+};
+
+// ── ACTIVITY STATUS RADIO BUTTONS ────────────────────────────────────────────
+function getActivityStatusParam() {
+  const selected = document.querySelector('input[name="activityStatus"]:checked');
+  return selected ? selected.value : '';
+}
+
+window.onActivityStatusChange = function() {
+  // Sync visual selected state on the pill labels
+  ['statusActive', 'statusInactive'].forEach(id => {
+    const rb = document.getElementById(id);
+    if (rb) rb.closest('label').classList.toggle('checked', rb.checked);
+  });
+  currentPage = 1;
+  render();
+};
+
+window.clearActivityStatus = function() {
+  ['statusActive', 'statusInactive'].forEach(id => {
+    const rb = document.getElementById(id);
+    if (rb) { rb.checked = false; rb.closest('label').classList.remove('checked'); }
+  });
   currentPage = 1;
   render();
 };
@@ -505,14 +527,16 @@ async function render() {
   if (locationsParam) url.searchParams.append('locations',  locationsParam);
   if (vendorsParam)   url.searchParams.append('vendors',    vendorsParam);
 
+  const activityStatusParam = getActivityStatusParam();
+  if (activityStatusParam) url.searchParams.append('sku_statuses', activityStatusParam);
+
   for (const [key, set] of Object.entries(dropdownSelections)) {
     if (set.size) {
       let paramName = key + 's';
-      if (key === 'category')          { paramName = 'categories'; }
-      else if (key === 'subcategory')  { paramName = 'subcategories'; }
-      else if (key === 'product_group') { paramName = 'product_groups'; }
+      if (key === 'category')              { paramName = 'categories'; }
+      else if (key === 'subcategory')      { paramName = 'subcategories'; }
+      else if (key === 'product_group')    { paramName = 'product_groups'; }
       else if (key === 'sub_product_group') { paramName = 'sub_prod_grps'; }
-      else if (key === 'sku_status')   { paramName = 'sku_statuses'; }
       url.searchParams.append(paramName, Array.from(set).join('|'));
     }
   }
@@ -608,7 +632,7 @@ function renderCard(r) {
   const pg     = r.Product_Group     || '';
   const spg    = r.Sub_Product_Group || '';
   const huid   = r.HUID              || '';
-  const status = (r.PWC_SKUSTATUS !== undefined && r.PWC_SKUSTATUS !== '' && r.PWC_SKUSTATUS !== 0) ? r.PWC_SKUSTATUS : '';
+  const status = (r.Activity_Status !== undefined && r.Activity_Status !== '' && r.Activity_Status !== 0) ? r.Activity_Status : '';
   const avail  = (r.AVAILABLE_PHYSICAL !== undefined && r.AVAILABLE_PHYSICAL !== null && r.AVAILABLE_PHYSICAL !== '') ? r.AVAILABLE_PHYSICAL : '';
 
   const isChecked = selectedForDownload.has(String(r.SERIALNUMBER)) ? 'checked' : '';
@@ -641,7 +665,7 @@ function renderCard(r) {
         <div class="detail-val highlight">${avail !== '' ? avail : '<span class="na">—</span>'}</div>
       </div>
       <div class="detail-item">
-        <div class="detail-key">SKU Status</div>
+        <div class="detail-key">Activity Status</div>
         <div class="detail-val">${status ? `<span class="sku-status">${hl(status)}</span>` : '<span class="na">—</span>'}</div>
       </div>
       <div class="detail-item">
@@ -684,7 +708,7 @@ function renderMatchHint(r) {
   const hiddenFields = {
     'Product Group':     r.Product_Group     || '',
     'Sub-Product Group': r.Sub_Product_Group || '',
-    'SKU Status':        r.PWC_SKUSTATUS     || '',
+    'Activity Status':   r.Activity_Status   || '',
     'Vendor Acct':       r.VENDACCOUNT       || '',
     'Location':          r.LOCATION          || '',
   };
@@ -989,14 +1013,16 @@ window.downloadSelective = async function() {
     if (locationsParam)  url.searchParams.append('locations',  locationsParam);
     if (vendorsParam)    url.searchParams.append('vendors',    vendorsParam);
 
+    const activityStatusParam = getActivityStatusParam();
+    if (activityStatusParam) url.searchParams.append('sku_statuses', activityStatusParam);
+
     for (const [key, set] of Object.entries(dropdownSelections)) {
       if (set.size) {
         let paramName = key + 's';
-        if (key === 'category')           { paramName = 'categories'; }
-        else if (key === 'subcategory')   { paramName = 'subcategories'; }
-        else if (key === 'product_group') { paramName = 'product_groups'; }
+        if (key === 'category')              { paramName = 'categories'; }
+        else if (key === 'subcategory')      { paramName = 'subcategories'; }
+        else if (key === 'product_group')    { paramName = 'product_groups'; }
         else if (key === 'sub_product_group') { paramName = 'sub_prod_grps'; }
-        else if (key === 'sku_status')    { paramName = 'sku_statuses'; }
         url.searchParams.append(paramName, Array.from(set).join('|'));
       }
     }
@@ -1027,6 +1053,9 @@ window.resetAll = function() {
   ['serial','huid','warehouse','location','vendor'].forEach(type => {
     clearPasteFilter(type);
   });
+
+  // Clear activity status checkboxes
+  clearActivityStatus();
 
   // Clear dropdown selections
   Object.keys(dropdownSelections).forEach(type => {
