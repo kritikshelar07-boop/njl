@@ -8,7 +8,7 @@ services:
       - key: PARQUET_BLOB_URL
         sync: false
       - key: REFRESH_INTERVAL_MINUTES
-        value: "30"
+        value: "5"
       - key: REFRESH_SECRET
         sync: false
     healthCheckPath: /api/health
